@@ -11,4 +11,4 @@ The user can:
 * enable and disable the clock for each day (long press on corresponding day)
 * enable and disable the clock for every day (long press on pencil-icon)
 
-[image](https://user-images.githubusercontent.com/62946975/202720902-c7585761-2edd-4b69-90fb-99d75c4631d2.png)
+[image](images/MorningstarSurface.jpg)
