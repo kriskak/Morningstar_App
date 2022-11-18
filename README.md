@@ -11,4 +11,5 @@ The user can:
 * enable and disable the clock for each day (long press on corresponding day)
 * enable and disable the clock for every day (long press on pencil-icon)
 
-[image](images/MorningstarSurface.jpg)
+<img src="images/MorningstarSurface.jpg" title="app surface" width="50%" height="auto">
+
