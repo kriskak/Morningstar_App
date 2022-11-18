@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/parent"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:visibility="visible">
+
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnEditAll"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:src="@drawable/edit_all"
+        app:backgroundTint="@color/sunshine"
+        app:elevation="6dp"
+        app:rippleColor="@color/white"
+        android:layout_marginBottom="40dp"
+        android:visibility="visible"/>
+
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnEditMonday"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/edit_monday"
+        app:backgroundTint="@color/sunshine"
+        app:elevation="6dp"
+        app:rippleColor="@color/white"
+        android:layout_below="@+id/btnEditAll"
+        android:layout_toLeftOf="@+id/btnEditTuesday"/>
+
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnEditTuesday"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/edit_tuesday"
+        app:backgroundTint="@color/sunshine"
+        app:elevation="6dp"
+        app:rippleColor="@color/white"
+        android:layout_below="@+id/btnEditAll"
+        android:layout_marginLeft="20dp"
+        android:layout_toLeftOf="@id/btnEditWednesday"/>
+
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnEditWednesday"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/edit_wednesday"
+        app:backgroundTint="@color/sunshine"
+        app:elevation="6dp"
+        app:rippleColor="@color/white"
+        android:layout_below="@+id/btnEditAll"
+        android:layout_toLeftOf="@+id/btnEditThursday"
+        android:layout_marginLeft="20dp"/>
+
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnEditThursday"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/edit_thursday"
+        app:backgroundTint="@color/sunshine"
+        app:elevation="6dp"
+        app:rippleColor="@color/white"
+        android:layout_below="@+id/btnEditAll"
+        android:layout_centerHorizontal="true"
+        android:layout_marginLeft="20dp"/>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnEditFriday"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/edit_friday"
+        app:backgroundTint="@color/sunshine"
+        app:elevation="6dp"
+        app:rippleColor="@color/white"
+        android:layout_below="@+id/btnEditAll"
+        android:layout_toRightOf="@+id/btnEditThursday"
+        android:layout_marginLeft="20dp"/>
+
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnEditSaturday"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/edit_saturday"
+        app:backgroundTint="@color/sunshine"
+        app:elevation="6dp"
+        app:rippleColor="@color/white"
+        android:layout_below="@+id/btnEditAll"
+        android:layout_toRightOf="@+id/btnEditFriday"
+        android:layout_marginLeft="20dp"/>
+
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnEditSunday"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/edit_sunday"
+        app:backgroundTint="@color/sunshine"
+        app:elevation="6dp"
+        app:rippleColor="@color/white"
+        android:layout_below="@+id/btnEditAll"
+        android:layout_toRightOf="@+id/btnEditSaturday"
+        android:layout_marginLeft="20dp"/>
+
+</RelativeLayout>
