@@ -9,15 +9,20 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.res.ColorStateList;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.timepicker.MaterialTimePicker;
 import com.google.android.material.timepicker.TimeFormat;
 import com.google.android.material.timepicker.MaterialTimePicker.Builder;
 
+import java.time.DayOfWeek;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener{
@@ -25,6 +30,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private FloatingActionButton btnEditMonday, btnEditTuesday, btnEditWednesday, btnEditThursday, btnEditFriday,
             btnEditSaturday, btnEditSunday, btnEditAll;
     private RelativeLayout parent;
+    private TextView txtUntilWakeup;
     private String settingsHeadline="dummy text";
     private static String minute;
     private static String hour;
@@ -45,6 +51,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         initElements();
+
     }
 
     @Override
@@ -124,6 +131,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 d.setSet(true);
             }
         }
+        updateTextview();
         return false;
     }
 
@@ -167,6 +175,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btnEditSunday = findViewById(R.id.btnEditSunday);
         btnEditAll = findViewById(R.id.btnEditAll);
         parent = findViewById(R.id.parent);
+        txtUntilWakeup = findViewById(R.id.txtUntilWakeup);
 
         days.add(Monday);
         days.add(Tuesday);
@@ -190,6 +199,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             b.setOnClickListener(MainActivity.this);
             b.setOnLongClickListener(MainActivity.this);
         }
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                updateTextview();
+            }
+        }, 500);
 
     }
 
@@ -246,6 +261,82 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         Log.d("DETECTED: ","\n Wake up time: every Day at "+hour+":"+minute);
     }
+
+    @SuppressLint("NewApi")
+    private void updateTextview(){
+        int d = LocalDateTime.now().getDayOfWeek().getValue();
+        boolean textSet = false;
+        for(Day day: days){
+            if(days.indexOf(day)+1 > d && days.indexOf(day)!=7){
+                if(day.isSet()){
+                    int ddiff = days.indexOf(day)+1-d;
+                    Log.d("DEBUG ","day "+d+" ddiff" +ddiff+" loop-day index "+days.indexOf(day));
+                    int diffs[] = calculateTimeDifference(day,ddiff);
+                    textSet = true;
+                    txtUntilWakeup.setText("Time until wakeup: " + diffs[0] + " days " + diffs[1] + " h " + diffs[2] + " min");
+                    break;
+                }
+            }
+        }
+        if(!textSet){
+            for(Day day: days){
+                if(days.indexOf(day)+1 <= d){
+                    if(day.isSet()) {
+                        int ddiff = (7 - d) + days.indexOf(day) + 1;
+                        int diffs[] = calculateTimeDifference(day,ddiff);
+                        textSet = true;
+                        txtUntilWakeup.setText("Time until wakeup: " + diffs[0] + " days " + diffs[1] + " h " + diffs[2] + " min");
+                        break;
+                    }
+                }
+            }
+        }
+        if(!textSet){
+            txtUntilWakeup.setText("no light-alarms set");
+        }
+    }
+
+    @SuppressLint("NewApi")
+    private int[] calculateTimeDifference(Day day, int ddiff){
+        int h = LocalDateTime.now().getHour();
+        int m = LocalDateTime.now().getMinute();
+        int hdiff = 333;
+        int mdiff = 333;
+        int wakeHour = Integer.parseInt(day.getWakeHour());
+        int wakeMinute = Integer.parseInt(day.getWakeMinute());
+        if (wakeHour > h) {
+            hdiff = wakeHour - h;
+            if (wakeMinute >= m) {
+                mdiff = wakeMinute - m;
+            } else {
+                hdiff = hdiff - 1;
+                mdiff = 60 - m + wakeMinute;
+            }
+        }
+        if (wakeHour < h) {
+            ddiff = ddiff - 1;
+            hdiff = 24 - h + wakeHour;
+            if (wakeMinute >= m) {
+                mdiff = wakeMinute - m;
+            } else {
+                hdiff = hdiff - 1;
+                mdiff = 60 - m + wakeMinute;
+            }
+        }
+        if (wakeHour == h) {
+            hdiff = 0;
+            if (wakeMinute >= m) {
+                mdiff = wakeMinute - m;
+            } else {
+                ddiff = ddiff - 1;
+                hdiff = 23;
+                mdiff = 60 - m + wakeMinute;
+            }
+        }
+        int[] diffs = {ddiff,hdiff,mdiff};
+        return diffs;
+    }
+
     public static class OverwriteAllDialogFragment extends DialogFragment {
         @Override
         public Dialog onCreateDialog(Bundle savedInstanceState) {
