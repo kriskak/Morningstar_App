@@ -14,9 +14,9 @@
         android:id="@+id/txtUntilWakeup"
         android:fontFamily="@font/fira_code_light"
         android:layout_centerHorizontal="true"
-        android:layout_above="@id/btnEditAll"
-        android:layout_marginBottom="300dp"
-        android:text="time until wakeup:"/>
+        android:layout_marginTop="300dp"
+        android:text="time until wakeup:"
+        android:layout_below="@id/btnEditThursday"/>
 
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -119,5 +119,38 @@
         android:layout_below="@+id/btnEditAll"
         android:layout_toRightOf="@+id/btnEditSaturday"
         android:layout_marginLeft="20dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/txtConnectSenderDevice"
+        android:fontFamily="@font/fira_code_light"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentRight="true"
+        android:text="Device: Pulse-Bracelet"
+        android:layout_margin="20dp"/>
+
+    <Button
+        android:id="@+id/btnConnectSenderDevice"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/txtConnectSenderDevice"
+        android:layout_alignParentRight="true"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="20dp"
+        android:fontFamily="@font/fira_code"
+        android:text="connect"
+        android:textColor="#000000" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/txtConnectSenderDeviceInfo"
+        android:fontFamily="@font/fira_code_light"
+        android:layout_alignParentRight="true"
+        android:layout_below="@id/btnConnectSenderDevice"
+        android:text="connection status"
+        android:layout_margin="20dp" />
 
 </RelativeLayout>
