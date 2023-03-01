@@ -13,6 +13,7 @@ import android.app.Dialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothSocket;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
@@ -42,9 +43,13 @@ import com.google.android.material.timepicker.MaterialTimePicker;
 import com.google.android.material.timepicker.TimeFormat;
 import com.google.android.material.timepicker.MaterialTimePicker.Builder;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener{
 
@@ -53,7 +58,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     //-------------------------- UI vars ----------------------
     private FloatingActionButton btnEditMonday, btnEditTuesday, btnEditWednesday, btnEditThursday, btnEditFriday,
             btnEditSaturday, btnEditSunday, btnEditAll;
-    private Button btnConnectSenderDevice;
+    private Button btnConnectSenderDevice, btnLightDemo;
     private RelativeLayout parent;
     private TextView txtUntilWakeup, txtConnectSenderDeviceInfo;
     private String settingsHeadline="dummy text";
@@ -82,6 +87,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private String senderDeviceName = "myCAT";//"ESP32Eva";//
     private String senderDeviceAddress = "null";
     private BLEservice bleService;
+    static final UUID mUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
     //-------------------------- bluetooth vars ----------------------
 
@@ -94,8 +100,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onClick(View view){
-        if(view.getId()==R.id.btnConnectSenderDevice){
+        int id = view.getId();
+        if(id==R.id.btnConnectSenderDevice) {
             querySenderDeviceAddress(); //searches for sender Device and binds to the BLE service
+        }else if (id==R.id.btnLightDemo){
+            Log.i(TAG, "btnLightdemo clicked");
+            startLightDemo();
 
     //----------------------- UI Implementation --------------------------
         }else{
@@ -223,6 +233,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         txtUntilWakeup = findViewById(R.id.txtUntilWakeup);
         btnConnectSenderDevice = findViewById(R.id.btnConnectSenderDevice);
         txtConnectSenderDeviceInfo = findViewById(R.id.txtConnectSenderDeviceInfo);
+        btnLightDemo = findViewById(R.id.btnLightDemo);
 
         days.add(Monday);
         days.add(Tuesday);
@@ -247,6 +258,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             b.setOnLongClickListener(MainActivity.this);
         }
         btnConnectSenderDevice.setOnClickListener(MainActivity.this);
+        btnLightDemo.setOnClickListener(MainActivity.this);
         performPermissionCheck();
         new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
             @Override
@@ -514,6 +526,17 @@ private boolean performPermissionCheck() {
                 Log.d(TAG,"Data from Service available ");
                 String bpm = intent.getStringExtra("BPM");
                 Log.i(TAG,"bpm is: "+bpm);
+                txtConnectSenderDeviceInfo.setText("bpm: "+bpm);
+
+                //----------------- Datenverarbeitung ------------------
+
+
+
+
+
+
+                //----------------- Datenverarbeitung ------------------
+
 
             }
             else if (BLEservice.ACTION_GATT_CLOSE.equals(action)){
@@ -538,7 +561,7 @@ private boolean performPermissionCheck() {
         unregisterReceiver(gattUpdateReceiver);
     }
 
-    private static IntentFilter makeGattUpdateIntentFilter() { //-------> important else Broadcasts are not received
+    private static IntentFilter makeGattUpdateIntentFilter() {
         final IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(BLEservice.ACTION_GATT_CONNECTED);
         intentFilter.addAction(BLEservice.ACTION_GATT_DISCONNECTED);
@@ -574,8 +597,38 @@ private boolean performPermissionCheck() {
         }
 
     };
+
+
+    @SuppressLint("MissingPermission")
+    public void startLightDemo(){
+        Log.i(TAG,"Starting Light demo");
+        BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
+        BluetoothDevice hc05 = btAdapter.getRemoteDevice("98:D3:21:F7:D5:7F");
+
+        BluetoothSocket btSocket = null;
+        try {
+            btSocket = hc05.createRfcommSocketToServiceRecord(mUUID);
+            btSocket.connect();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            OutputStream outputStream = btSocket.getOutputStream();
+            outputStream.write(49);
+            outputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            btSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+}
 //------------------- Bluetooth Implementation -------------------------
 
 
 
-}
