@@ -89,7 +89,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private BLEservice bleService;
     static final UUID mUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
-    //-------------------------- bluetooth vars ----------------------
+    //-------------------------- Data handling ----------------------
+    private int[] Data = new int[5];
+    private int bpmIterator = 0;
+    private double avg = 60;
+    private double avg1 = 0;
+    private int wakeupCount = 0;
+    private int counter=0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -189,15 +195,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return false;
     }
 
-    public String getSettingsHeadline() {
+    private String getSettingsHeadline() {
         return settingsHeadline;
     }
 
-    public void setSettingsHeadline(String settingsHeadline) {
+    private void setSettingsHeadline(String settingsHeadline) {
         this.settingsHeadline = settingsHeadline;
 
     }
-    public void setSettingsHeadline(View view){
+    private void setSettingsHeadline(View view){
         Day d = getCorrespondingDay(view);
         if(d.getName().equals("ALL")){
             setSettingsHeadline("Edit all days at once");
@@ -205,7 +211,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             setSettingsHeadline(d.getName());
         }
     }
-    public MaterialTimePicker initPicker(View view){
+    private MaterialTimePicker initPicker(View view){
         Builder builder = new MaterialTimePicker.Builder();
         builder.setTimeFormat(TimeFormat.CLOCK_24H);
         builder.setTitleText(getSettingsHeadline());
@@ -220,7 +226,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return picker;
     }
 
-    void initElements(){
+    private void initElements(){
         btnEditMonday = findViewById(R.id.btnEditMonday);
         btnEditTuesday = findViewById(R.id.btnEditTuesday);
         btnEditWednesday = findViewById(R.id.btnEditWednesday);
@@ -399,7 +405,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return diffs;
     }
 
-    public void startRepeatTimer() {
+    private void startRepeatTimer() {
         CountDownTimer countDownTimer = new CountDownTimer(60000, 60000) {
             public void onTick(long millisUntilFinished) {
                 updateTextview();
@@ -410,7 +416,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }.start();
     }
 
-    public static class OverwriteAllDialogFragment extends DialogFragment {
+    private static class OverwriteAllDialogFragment extends DialogFragment {
         @Override
         public Dialog onCreateDialog(Bundle savedInstanceState) {
             AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
@@ -429,24 +435,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 //------------------- Bluetooth Implementation -------------------------
-@SuppressLint("NewApi")
-private boolean performPermissionCheck() {
-    String[] permissions = new String[]{"android.permission.BLUETOOTH_SCAN",
-            "android.permission.BLUETOOTH_CONNECT",
-            "android.permission.BLUETOOTH_ADMIN",
-            "android.permission.BLUETOOTH"
-    };
-    boolean permissionCheck = (ActivityCompat.checkSelfPermission(MainActivity.this,
-            Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED)
-            && (ActivityCompat.checkSelfPermission(MainActivity.this,
-            Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED);
-    if (!permissionCheck) {
-        requestPermissions(permissions, 200);
+    @SuppressLint("NewApi")
+    private boolean performPermissionCheck() {
+        String[] permissions = new String[]{"android.permission.BLUETOOTH_SCAN",
+                "android.permission.BLUETOOTH_CONNECT",
+                "android.permission.BLUETOOTH_ADMIN",
+                "android.permission.BLUETOOTH"
+        };
+        boolean permissionCheck = (ActivityCompat.checkSelfPermission(MainActivity.this,
+                Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED)
+                && (ActivityCompat.checkSelfPermission(MainActivity.this,
+                Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED);
+        if (!permissionCheck) {
+            requestPermissions(permissions, 200);
+        }
+        return permissionCheck;
     }
-    return permissionCheck;
-}
     @SuppressLint({"NewApi", "MissingPermission"})
-    public void querySenderDeviceAddress(){
+    private void querySenderDeviceAddress(){
 
         scanning = false;
         try {
@@ -475,7 +481,7 @@ private boolean performPermissionCheck() {
         }
     }
     @SuppressLint("NewApi")
-    ScanCallback scanCallback = new ScanCallback() { //callback muss für start und stopp gleich sein sonst stoppt scan nie
+    private ScanCallback scanCallback = new ScanCallback() { //callback muss für start und stopp gleich sein sonst stoppt scan nie
         @SuppressLint("MissingPermission")
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
@@ -522,22 +528,37 @@ private boolean performPermissionCheck() {
                 deviceFound = false;
             } else if (BLEservice.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
                 Log.d(TAG,"Some Services were discovered ");
-            }else if (BLEservice.ACTION_DATA_AVAILABLE.equals(action)) {
+            }else if (BLEservice.NOTIFICATION_DATA_AVAILABLE.equals(action)) {
                 Log.d(TAG,"Data from Service available ");
-                String bpm = intent.getStringExtra("BPM");
+                int bpm = Integer.parseInt(intent.getStringExtra("BPM"));
                 Log.i(TAG,"bpm is: "+bpm);
                 txtConnectSenderDeviceInfo.setText("bpm: "+bpm);
 
-                //----------------- Datenverarbeitung ------------------
 
-
-
-
-
-
-                //----------------- Datenverarbeitung ------------------
-
-
+                //----------------- Data handling ------------------
+                counter += 2;
+                Data[bpmIterator] = bpm+counter;//-----------------------testing with counter
+                if(bpmIterator>=4){
+                    double sum=0;
+                    for(int i=0;i<Data.length;i++){
+                        sum = sum+Data[i];
+                    }
+                    Log.i(TAG,"sum: "+sum);
+                    avg1 = sum/Data.length;
+                    if(avg1>avg){
+                        wakeupCount++;
+                        if(wakeupCount>=5){
+                            startLightAlarm();
+                        }
+                    }
+                    Log.i(TAG,"avg: "+avg1);
+                    avg=avg1;
+                    for(int i=0;i<Data.length-1;i++){
+                        Data[i]=Data[i+1];
+                    }
+                    bpmIterator--;
+                }
+                bpmIterator++;
             }
             else if (BLEservice.ACTION_GATT_CLOSE.equals(action)){
                 deviceFound = false;
@@ -568,6 +589,7 @@ private boolean performPermissionCheck() {
         intentFilter.addAction(BLEservice.ACTION_GATT_SERVICES_DISCOVERED);
         intentFilter.addAction(BLEservice.ACTION_DATA_AVAILABLE);
         intentFilter.addAction(BLEservice.ACTION_GATT_CLOSE);
+        intentFilter.addAction(BLEservice.NOTIFICATION_DATA_AVAILABLE);
         return intentFilter;
     }
 
@@ -600,35 +622,111 @@ private boolean performPermissionCheck() {
 
 
     @SuppressLint("MissingPermission")
-    public void startLightDemo(){
+    private void startLightDemo(){
         Log.i(TAG,"Starting Light demo");
         BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
         BluetoothDevice hc05 = btAdapter.getRemoteDevice("98:D3:21:F7:D5:7F");
 
-        BluetoothSocket btSocket = null;
+        BluetoothSocket btSocket;
         try {
             btSocket = hc05.createRfcommSocketToServiceRecord(mUUID);
             btSocket.connect();
+            try {
+                OutputStream outputStream = btSocket.getOutputStream();
+                outputStream.write(49);
+                outputStream.close();
+            } catch (IOException e) {
+                //e.printStackTrace();
+            }
+            try {
+                btSocket.close();
+            } catch (IOException e) {
+                //e.printStackTrace();
+            }
         } catch (IOException e) {
-            e.printStackTrace();
-        }
-        try {
-            OutputStream outputStream = btSocket.getOutputStream();
-            outputStream.write(49);
-            outputStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        try {
-            btSocket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
+            Log.e(TAG,"Connetion to HC05 failed");
         }
 
     }
+    //------------------- Alarm -------------------------
+    @SuppressLint("MissingPermission")
+    private void startLightAlarm(){
+        Log.i(TAG,"starting Light Alarm!");
+        BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
+        BluetoothDevice hc05 = btAdapter.getRemoteDevice("98:D3:21:F7:D5:7F");
 
+        BluetoothSocket btSocket;
+        try {
+            btSocket = hc05.createRfcommSocketToServiceRecord(mUUID);
+            btSocket.connect();
+            try {
+                OutputStream outputStream = btSocket.getOutputStream();
+                outputStream.write(49);
+                outputStream.close();
+
+                /*CancelAlarmDialogFragment fr = new CancelAlarmDialogFragment();---------------------- for testing purposes
+                                                                                 -----------------------this is commented
+                fr.show(getSupportFragmentManager().beginTransaction(), "SHOWING DIALOG");
+            */} catch (IOException e) {
+                //e.printStackTrace();
+            }
+            try {
+                btSocket.close();
+            } catch (IOException e) {
+                //e.printStackTrace();
+            }
+
+        } catch (IOException e) {
+            //e.printStackTrace();
+            Log.e(TAG,"Connetion to HC05 failed");
+        }
+        CancelAlarmDialogFragment fr = new CancelAlarmDialogFragment();
+        fr.show(getSupportFragmentManager().beginTransaction(), "SHOWING DIALOG");
+
+    }
+    @SuppressLint("MissingPermission")
+    private static void stopLightAlarm(){
+        Log.i(TAG,"stopping Light Alarm!");
+        BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
+        BluetoothDevice hc05 = btAdapter.getRemoteDevice("98:D3:21:F7:D5:7F");
+
+        BluetoothSocket btSocket;
+        try {
+            btSocket = hc05.createRfcommSocketToServiceRecord(mUUID);
+            btSocket.connect();
+            try {
+                OutputStream outputStream = btSocket.getOutputStream();
+                outputStream.write(48);
+                outputStream.close();
+            } catch (IOException e) {
+                //e.printStackTrace();
+            }
+            try {
+                btSocket.close();
+            } catch (IOException e) {
+                //e.printStackTrace();
+            }
+        } catch (IOException e) {
+            //e.printStackTrace();
+            Log.e(TAG,"Connetion to HC05 failed");
+        }
+    }
+    public static class CancelAlarmDialogFragment extends DialogFragment {
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            builder.setTitle("Cancel Alarm")
+                    .setPositiveButton("Cancel", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            stopLightAlarm();
+                        }
+                    });
+            return builder.create();
+        }
+    }
 }
-//------------------- Bluetooth Implementation -------------------------
+
 
 
 

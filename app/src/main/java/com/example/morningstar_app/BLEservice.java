@@ -49,15 +49,17 @@ public class BLEservice extends Service {
     public BluetoothDevice device;
 
     public final static String ACTION_GATT_CONNECTED =
-            "com.example.ble_with_nordicble.ACTION_GATT_CONNECTED";
+            "com.example.morningstar_app.ACTION_GATT_CONNECTED";
     public final static String ACTION_GATT_DISCONNECTED =
-            "com.example.ble_with_nordicble.ACTION_GATT_DISCONNECTED";
+            "com.example.morningstar_app.ACTION_GATT_DISCONNECTED";
     public final static String ACTION_GATT_SERVICES_DISCOVERED =
-            "com.example.ble_with_nordicble.ACTION_GATT_SERVICES_DISCOVERED";
+            "com.example.morningstar_app.ACTION_GATT_SERVICES_DISCOVERED";
     public final static String ACTION_DATA_AVAILABLE =
-            "com.example.ble_with_nordicble.ACTION_DATA_AVAILABLE";
+            "com.example.morningstar_app.ACTION_DATA_AVAILABLE";
     public final static String ACTION_GATT_CLOSE =
-            "com.example.ble_with_nordicble.ACTION_GATT_CLOSE";
+            "com.example.morningstar_app.ACTION_GATT_CLOSE";
+    public final static String NOTIFICATION_DATA_AVAILABLE =
+            "com.example.morningstar_app.NOTIFICATION_DATA_AVAILABLE";
     public final static String SENDER_SERVICE_UUID_STRING =
             "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
     public final static String SENDER_CHARACTERISTIC_UUID_STRING =
@@ -221,7 +223,7 @@ public class BLEservice extends Service {
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
+            broadcastUpdate(NOTIFICATION_DATA_AVAILABLE, characteristic);
         }
     };
 
