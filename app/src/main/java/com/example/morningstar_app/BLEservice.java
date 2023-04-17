@@ -97,7 +97,7 @@ public class BLEservice extends Service {
         try {
             device = bluetoothAdapter.getRemoteDevice(address);
             Log.w(TAG,"found Device "+device.getName());
-            bluetoothGatt = device.connectGatt(this, false, bluetoothGattCallback,TRANSPORT_LE); //TODO:-------> Testing
+            bluetoothGatt = device.connectGatt(this, false, bluetoothGattCallback,TRANSPORT_LE);
             return true;
         } catch (IllegalArgumentException exception) {
             Log.w(TAG, "Device not found with provided address.");
@@ -285,6 +285,7 @@ public class BLEservice extends Service {
         return result;
     }
 
+    // the following Command-Queue-Implementation is taken from Martijn van Welie's Blog on https://medium.com/@martijn.van.welie/making-android-ble-work-part-4-72a0b85cb442
     public boolean readCharacteristic(final BluetoothGattCharacteristic characteristic) {
         Log.e(TAG, "characteristic is: "+characteristic);
         if(bluetoothGatt == null) {
@@ -357,6 +358,9 @@ public class BLEservice extends Service {
             });
         }
     }
+
+    //End of Command-Queue-Implementation
+
     private void broadcastUpdate(final String action) {
         final Intent intent = new Intent(action);
         sendBroadcast(intent);

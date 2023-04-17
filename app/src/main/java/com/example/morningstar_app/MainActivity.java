@@ -4,12 +4,15 @@ import static android.content.ContentValues.TAG;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.app.PendingIntent;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -26,11 +29,15 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -46,9 +53,12 @@ import com.google.android.material.timepicker.MaterialTimePicker.Builder;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.text.SimpleDateFormat;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, View.OnLongClickListener{
@@ -75,6 +85,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static ArrayList<Day> days = new ArrayList<>();
     private ArrayList<FloatingActionButton> btns = new ArrayList<>();
     private boolean longPress;
+    private AlarmManager alarmManager;
+    private PendingIntent pendingIntent;
+    private int daysUnitlNextWakeup = 0;
+    private boolean lightDemo = false;
+
     //-------------------------- UI vars ----------------------
 
     //-------------------------- bluetooth vars ----------------------
@@ -84,8 +99,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private BluetoothLeScanner leScanner;
     private int handlerDelay = 6000;
     private BluetoothDevice senderDevice;
-    private String senderDeviceName = "myCAT";//"ESP32Eva";//
-    private String senderDeviceAddress = "null";
+    private String senderDeviceName = "ESP32Eva";//"myCAT";
+    private String senderDeviceAddress = "30:AE:A4:43:76:32";
     private BLEservice bleService;
     static final UUID mUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
@@ -101,17 +116,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        initElements();
+        init();
     }
 
     @Override
     public void onClick(View view){
         int id = view.getId();
         if(id==R.id.btnConnectSenderDevice) {
-            querySenderDeviceAddress(); //searches for sender Device and binds to the BLE service
+            bindToService();
+            //querySenderDeviceAddress(); //searches for sender Device and binds to the BLE service
         }else if (id==R.id.btnLightDemo){
             Log.i(TAG, "btnLightdemo clicked");
-            startLightDemo();
+            startLightAlarm();
+            lightDemo = true;
 
     //----------------------- UI Implementation --------------------------
         }else{
@@ -138,16 +155,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             OverwriteAllDialogFragment fr = new OverwriteAllDialogFragment();
                             try{
                                 fr.show(getSupportFragmentManager().beginTransaction(), "SHOWING DIALOG");
+                                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        refreshAlarm();
+                                    }
+                                },60000);
                             }catch(Exception e){
-                                //Log.d("EXCEPTION: ",""+e);
+                                Log.d("EXCEPTION: ",""+e);
                             }
 
                         }else{
                             d.setWakeHour(hour);
                             d.setWakeMinute(minute);
                             Log.d("DETECTED: ","\n Wake up time: "+d.getName()+" at "+hour+":"+minute);
+                            refreshAlarm();
                         }
-                        updateTextview();
+                        //updateTextview();
+
                     }
                 });
 
@@ -162,6 +187,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public boolean onLongClick(View view) {
         longPress = true;
         Day d = getCorrespondingDay(view);
+
         if(d.getName().equals("ALL")){
             if(d.isSet()) {
                 for (Day x : days) {
@@ -169,7 +195,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 for (FloatingActionButton b : btns) {
                     if (b.getId() != R.id.btnEditAll) {
-                        b.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.btn_off)));
+                        b.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(MainActivity.this, R.color.btn_off)));
                     }else{}
                 }
             }else{
@@ -178,20 +204,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 for (FloatingActionButton b : btns) {
                     if (b.getId() != R.id.btnEditAll) {
-                        b.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.sunshine)));
+                        b.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(MainActivity.this, R.color.sunshine)));
                     }else{}
                 }
             }
         }else {
             if (d.isSet()) {
-                view.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.btn_off)));
+                view.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(MainActivity.this, R.color.btn_off)));
                 d.setSet(false);
             } else {
-                view.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.sunshine)));
+                view.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(MainActivity.this, R.color.sunshine)));
                 d.setSet(true);
             }
         }
-        updateTextview();
+        //updateTextview();
+        refreshAlarm();
         return false;
     }
 
@@ -226,7 +253,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return picker;
     }
 
-    private void initElements(){
+    private void init(){
         btnEditMonday = findViewById(R.id.btnEditMonday);
         btnEditTuesday = findViewById(R.id.btnEditTuesday);
         btnEditWednesday = findViewById(R.id.btnEditWednesday);
@@ -236,7 +263,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btnEditSunday = findViewById(R.id.btnEditSunday);
         btnEditAll = findViewById(R.id.btnEditAll);
         parent = findViewById(R.id.parent);
-        txtUntilWakeup = findViewById(R.id.txtUntilWakeup);
+        //txtUntilWakeup = findViewById(R.id.txtUntilWakeup);
         btnConnectSenderDevice = findViewById(R.id.btnConnectSenderDevice);
         txtConnectSenderDeviceInfo = findViewById(R.id.txtConnectSenderDeviceInfo);
         btnLightDemo = findViewById(R.id.btnLightDemo);
@@ -266,14 +293,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btnConnectSenderDevice.setOnClickListener(MainActivity.this);
         btnLightDemo.setOnClickListener(MainActivity.this);
         performPermissionCheck();
-        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+        
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() { //----- not needed
             @Override
             public void run() {
-                updateTextview();
-                startRepeatTimer();
+                alarmManager = (AlarmManager) MainActivity.this.getSystemService(Context.ALARM_SERVICE);
+                Intent alarmIntent = new Intent(MainActivity.this, AlarmReceiver.class);
+                pendingIntent = PendingIntent.getBroadcast(MainActivity.this, 0, alarmIntent, PendingIntent.FLAG_IMMUTABLE); //---- Flag_Immutable muss verwendet werden weil sonst error, es muss flag immutable oder mutable angegeben werden!!!
             }
         }, 500);
-
     }
 
     private Day getCorrespondingDay(View view) {
@@ -330,7 +358,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Log.d("DETECTED: ","\n Wake up time: every Day at "+hour+":"+minute);
     }
 
-    @SuppressLint("NewApi")
+    /*@SuppressLint("NewApi")
     private void updateTextview(){
         int d = LocalDateTime.now().getDayOfWeek().getValue();
         boolean textSet = false;
@@ -362,10 +390,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if(!textSet){
             txtUntilWakeup.setText("no light-alarms set");
         }
-    }
+    }*/
 
     @SuppressLint("NewApi")
     private int[] calculateTimeDifference(Day day, int ddiff){
+        Log.i(TAG,"DDiff: "+ddiff);
         int h = LocalDateTime.now().getHour();
         int m = LocalDateTime.now().getMinute();
         int hdiff = 333;
@@ -405,7 +434,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return diffs;
     }
 
-    private void startRepeatTimer() {
+    /*private void startRepeatTimer() {
         CountDownTimer countDownTimer = new CountDownTimer(60000, 60000) {
             public void onTick(long millisUntilFinished) {
                 updateTextview();
@@ -414,9 +443,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 start();
             }
         }.start();
-    }
+    }*/
 
-    private static class OverwriteAllDialogFragment extends DialogFragment {
+    public static class OverwriteAllDialogFragment extends DialogFragment {
         @Override
         public Dialog onCreateDialog(Bundle savedInstanceState) {
             AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
@@ -434,24 +463,92 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    private void refreshAlarm(){
+        alarmManager.cancel(pendingIntent);
+        try{
+            Day nextDay = nextAlarm();
+            Log.i(TAG, "Next Alarm is on "+nextDay.getName());
+            Log.i(TAG,"current time: "+ System.currentTimeMillis());
+
+            int[] diffs = calculateTimeDifference(nextDay,daysUnitlNextWakeup);
+            Log.i(TAG, "Time until wakeup: "+diffs[0]+"d, "+diffs[1]+"h, "+diffs[2]+"min ");
+            Toast.makeText(MainActivity.this, "Time until wakeup: "+diffs[0]+" days, "+diffs[1]+" hours, "+diffs[2]+" minutes ",Toast.LENGTH_LONG).show();
+            int tInMillis = diffs[0]*24*60*60*1000 + diffs[1]*60*60*1000 + diffs[2]*60*1000; //for testing
+            //int tInMillis = diffs[0]*24*60*60*1000 + diffs[1]*60*60*1000 + diffs[2]*60*1000 - 90*60*1000; //for the real world app
+            Log.i(TAG,"wakeup in:  "+ tInMillis);
+
+            AlarmManager.AlarmClockInfo info = new AlarmManager.AlarmClockInfo(System.currentTimeMillis()+tInMillis, null);
+            alarmManager.setAlarmClock(info,pendingIntent);
+        }catch(NullPointerException npE){
+            Toast.makeText(MainActivity.this, "All Alarms canceled",Toast.LENGTH_LONG).show();
+
+        }
+
+    }
+
+    @SuppressLint("NewApi")
+    private Day nextAlarm(){
+        int d = LocalDateTime.now().getDayOfWeek().getValue();
+        Log.i(TAG, "today is the "+d+" day of the week");
+        int ddiff = 0;
+        for(Day day: days){
+            if(days.indexOf(day)+1 == d && days.indexOf(day)!=7){
+                if(day.isSet()){
+                    if( (Integer.parseInt(day.getWakeHour())) > (LocalDateTime.now().getHour()) ){
+                        daysUnitlNextWakeup = ddiff;
+                        return day;
+                    }else if((Integer.parseInt(day.getWakeHour())) == (LocalDateTime.now().getHour()) && (Integer.parseInt(day.getWakeMinute())) >= (LocalDateTime.now().getMinute()) ){
+                        daysUnitlNextWakeup = ddiff;
+                        return day;
+                    }
+                }
+            }
+            if(days.indexOf(day)+1 > d && days.indexOf(day)!=7){
+                ddiff++;
+                if(day.isSet()){
+                    daysUnitlNextWakeup = ddiff;
+                    return day;
+                }
+            }
+        }
+        ddiff = 0;
+        for(Day day: days){
+            if(days.indexOf(day)+1 < d){
+                ddiff++;
+                if(day.isSet()) {
+                    daysUnitlNextWakeup = ddiff;
+                    return day;
+                }
+            }
+        }
+        daysUnitlNextWakeup = ddiff;
+        Log.i(TAG,"days difference is: "+daysUnitlNextWakeup);
+        return null;
+    }
+
 //------------------- Bluetooth Implementation -------------------------
+
+    //TODO: unregister service and disconnect everything after device disconnected
     @SuppressLint("NewApi")
     private boolean performPermissionCheck() {
         String[] permissions = new String[]{"android.permission.BLUETOOTH_SCAN",
                 "android.permission.BLUETOOTH_CONNECT",
                 "android.permission.BLUETOOTH_ADMIN",
-                "android.permission.BLUETOOTH"
+                "android.permission.BLUETOOTH",
+                "android.permission.SCHEDULE_EXACT_ALARM"
         };
         boolean permissionCheck = (ActivityCompat.checkSelfPermission(MainActivity.this,
                 Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED)
                 && (ActivityCompat.checkSelfPermission(MainActivity.this,
-                Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED);
+                Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED)
+                && (ActivityCompat.checkSelfPermission(MainActivity.this,
+                Manifest.permission.SCHEDULE_EXACT_ALARM) == PackageManager.PERMISSION_GRANTED);
         if (!permissionCheck) {
             requestPermissions(permissions, 200);
         }
         return permissionCheck;
     }
-    @SuppressLint({"NewApi", "MissingPermission"})
+    /*@SuppressLint({"NewApi", "MissingPermission"})
     private void querySenderDeviceAddress(){
 
         scanning = false;
@@ -490,7 +587,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 senderDevice = result.getDevice();
                 if (senderDevice.getName().equals(senderDeviceName)) {
                     leScanner.stopScan(scanCallback);
-                    Log.i(TAG,"Found Device");
+                    Log.i(TAG,"Found Device.\n Address: "+senderDevice.getAddress().toString());
                     txtConnectSenderDeviceInfo.setText("connected!");
                     deviceFound = true;
                     senderDeviceAddress = senderDevice.getAddress();
@@ -507,7 +604,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 //Log.d("EXCEPTION: ",""+e); //wird jedes mal getriggert wenn das bt device null ist = oft
             }
         }
-    };
+    };*/
     private void bindToService(){
         if(performPermissionCheck()){
             Intent gattServiceIntent = new Intent(MainActivity.this, BLEservice.class);
@@ -520,8 +617,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
+            if("START_RECEIVING".equals(action)){
+                bindToService();
+                Log.i(TAG, "start Receiving");
+            }
             if (BLEservice.ACTION_GATT_CONNECTED.equals(action)) {
                 Log.i(TAG,"Gatt connected");
+                txtConnectSenderDeviceInfo.setText("connected!");
 
             } else if (BLEservice.ACTION_GATT_DISCONNECTED.equals(action)) {
                 Log.d(TAG,"Gatt disconnected");
@@ -531,34 +633,40 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }else if (BLEservice.NOTIFICATION_DATA_AVAILABLE.equals(action)) {
                 Log.d(TAG,"Data from Service available ");
                 int bpm = Integer.parseInt(intent.getStringExtra("BPM"));
-                Log.i(TAG,"bpm is: "+bpm);
-                txtConnectSenderDeviceInfo.setText("bpm: "+bpm);
 
 
                 //----------------- Data handling ------------------
-                counter += 2;
-                Data[bpmIterator] = bpm+counter;//-----------------------testing with counter
-                if(bpmIterator>=4){
-                    double sum=0;
-                    for(int i=0;i<Data.length;i++){
-                        sum = sum+Data[i];
-                    }
-                    Log.i(TAG,"sum: "+sum);
-                    avg1 = sum/Data.length;
-                    if(avg1>avg){
-                        wakeupCount++;
-                        if(wakeupCount>=5){
-                            startLightAlarm();
+                if(bpm>0){
+                    Log.i(TAG,"bpm is: "+bpm);
+                    txtConnectSenderDeviceInfo.setText("bpm: "+bpm);
+                    bpm = 60;
+                    counter += 2;
+                    Data[bpmIterator] = bpm+counter;//-----------------------testing with counter
+                    if(bpmIterator>=4){
+                        double sum=0;
+                        for(int i=0;i<Data.length;i++){
+                            sum = sum+Data[i];
                         }
+                        //Log.i(TAG,"sum: "+sum);
+                        avg1 = sum/Data.length;
+                        if(avg1>avg){
+                            wakeupCount++;
+                            if(wakeupCount>=5){
+                                startLightAlarm();
+                                bleService.close();
+                                refreshAlarm(); //-----------------------------------> TODO: close everything bluetooth related
+                                txtConnectSenderDeviceInfo.setText("connection status");
+                            }
+                        }
+                        //Log.i(TAG,"avg: "+avg1);
+                        avg=avg1;
+                        for(int i=0;i<Data.length-1;i++){
+                            Data[i]=Data[i+1];
+                        }
+                        bpmIterator--;
                     }
-                    Log.i(TAG,"avg: "+avg1);
-                    avg=avg1;
-                    for(int i=0;i<Data.length-1;i++){
-                        Data[i]=Data[i+1];
-                    }
-                    bpmIterator--;
+                    bpmIterator++;
                 }
-                bpmIterator++;
             }
             else if (BLEservice.ACTION_GATT_CLOSE.equals(action)){
                 deviceFound = false;
@@ -590,6 +698,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         intentFilter.addAction(BLEservice.ACTION_DATA_AVAILABLE);
         intentFilter.addAction(BLEservice.ACTION_GATT_CLOSE);
         intentFilter.addAction(BLEservice.NOTIFICATION_DATA_AVAILABLE);
+        intentFilter.addAction("START_RECEIVING");
         return intentFilter;
     }
 
@@ -621,7 +730,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     };
 
 
-    @SuppressLint("MissingPermission")
+    /*@SuppressLint("MissingPermission")
     private void startLightDemo(){
         Log.i(TAG,"Starting Light demo");
         BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -648,7 +757,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Log.e(TAG,"Connetion to HC05 failed");
         }
 
-    }
+    }*/
     //------------------- Alarm -------------------------
     @SuppressLint("MissingPermission")
     private void startLightAlarm(){
@@ -662,7 +771,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             btSocket.connect();
             try {
                 OutputStream outputStream = btSocket.getOutputStream();
-                outputStream.write(49);
+                if(lightDemo){
+                    outputStream.write(50);
+                    outputStream.write(50);
+                    outputStream.write(50);
+                    lightDemo = false;
+                }else{
+                    outputStream.write(49);
+                    outputStream.write(49);
+                    outputStream.write(49);
+                }
                 outputStream.close();
 
                 /*CancelAlarmDialogFragment fr = new CancelAlarmDialogFragment();---------------------- for testing purposes
@@ -697,6 +815,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             btSocket.connect();
             try {
                 OutputStream outputStream = btSocket.getOutputStream();
+                outputStream.write(48);
+                outputStream.write(48);
                 outputStream.write(48);
                 outputStream.close();
             } catch (IOException e) {

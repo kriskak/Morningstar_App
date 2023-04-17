@@ -8,7 +8,7 @@
     android:background="@color/background"
     android:visibility="visible">
 
-    <TextView
+ <!--   <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/txtUntilWakeup"
@@ -16,7 +16,7 @@
         android:layout_centerHorizontal="true"
         android:layout_marginTop="300dp"
         android:text="time until wakeup:"
-        android:layout_below="@id/btnEditThursday"/>
+        android:layout_below="@id/btnEditThursday"/>-->
 
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
